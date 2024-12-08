@@ -132,7 +132,7 @@ export default {
           });
       }
 
-      const targetReverseProxy = env.REVERSE_PROXY_TARGET || "example.com";
+      const targetReverseProxy = env.REVERSE_PROXY_TARGET || "bmkg.xyz";
       return await reverseProxy(request, targetReverseProxy);
     } catch (err) {
       return new Response(`An error occurred: ${err.toString()}`, {
