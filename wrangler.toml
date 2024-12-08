@@ -1,40 +1,46 @@
-name = "vvip" # todo
+name = "tp1" # todo
 main = "_worker.js"
 compatibility_date = "2024-05-26"
 
+
+[unsafe.metadata.observability]
+enabled = true
+
+[observability.logs]
+enabled = true
 [[routes]]
-pattern = "vvip.bmkg.xyz"
+pattern = "tp1.bmkg.xyz"
 custom_domain = true
 [[routes]]
-pattern = "ava.game.naver.com.vvip.bmkg.xyz"
+pattern = "ava.game.naver.com.tp1.bmkg.xyz"
 custom_domain = true
 [[routes]]
-pattern = "graph.instagram.com.vvip.bmkg.xyz"
+pattern = "graph.instagram.com.tp1.bmkg.xyz"
 custom_domain = true
 [[routes]]
-pattern = "quiz.int.vidio.com.vvip.bmkg.xyz"
+pattern = "quiz.int.vidio.com.tp1.bmkg.xyz"
 custom_domain = true
 [[routes]]
 pattern = "live.iflix.com.vcip.bmkg.xyz"
 custom_domain = true
 [[routes]]
-pattern = "support.zoom.us.vvip.bmkg.xyz"
+pattern = "support.zoom.us.tp1.bmkg.xyz"
 custom_domain = true
 [[routes]]
-pattern = "blog.webex.com.vvip.bmkg.xyz"
+pattern = "blog.webex.com.tp1.bmkg.xyz"
 custom_domain = true
 [[routes]]
-pattern = "investors.spotify.com.vvip.bmkg.xyz"
+pattern = "investors.spotify.com.tp1.bmkg.xyz"
 custom_domain = true
 [[routes]]
-pattern = "cache.netflix.com.vvip.bmkg.xyz"
+pattern = "cache.netflix.com.tp1.bmkg.xyz"
 custom_domain = true
 [[routes]]
-pattern = "zaintest.vuclip.com.vvip.bmkg.xyz"
+pattern = "zaintest.vuclip.com.tp1.bmkg.xyz"
 custom_domain = true
 [[routes]]
-pattern = "io.ruangguru.com.vvip.bmkg.xyz"
+pattern = "io.ruangguru.com.tp1.bmkg.xyz"
 custom_domain = true
 [[routes]]
-pattern = "api.midtrans.com.vvip.bmkg.xyz"
+pattern = "api.midtrans.com.tp1.bmkg.xyz"
 custom_domain = true
