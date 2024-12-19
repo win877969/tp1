@@ -1,8 +1,8 @@
 import { connect } from "cloudflare:sockets";
 
 // Variables
-const rootDomain = "foolvpn.me"; // Ganti dengan domain utama kalian
-const serviceName = "nautica"; // Ganti dengan nama workers kalian
+const rootDomain = "ndeso.web.id"; // Ganti dengan domain utama kalian
+const serviceName = "tp1"; // Ganti dengan nama workers kalian
 const apiKey = "734be7bf842d050e7cb8e762dca89c5c0ade9"; // Ganti dengan Global API key kalian (https://dash.cloudflare.com/profile/api-tokens)
 const apiEmail = "xpandhita@gmail.com"; // Ganti dengan email yang kalian gunakan
 const accountID = "817eee3f6b75e87cf1aba63519b45c9e"; // Ganti dengan Account ID kalian (https://dash.cloudflare.com -> Klik domain yang kalian gunakan)
