@@ -1,19 +1,21 @@
 import { connect } from "cloudflare:sockets";
 
 // Variables
-const rootDomain = "ndeso.web.id"; // Ganti dengan domain utama kalian
-const serviceName = "ndeso.web.id"; // Ganti dengan nama workers kalian
-const apiKey = ""; // Ganti dengan Global API key kalian (https://dash.cloudflare.com/profile/api-tokens)
-const apiEmail = ""; // Ganti dengan email yang kalian gunakan
-const accountID = ""; // Ganti dengan Account ID kalian (https://dash.cloudflare.com -> Klik domain yang kalian gunakan)
-const zoneID = ""; // Ganti dengan Zone ID kalian (https://dash.cloudflare.com -> Klik domain yang kalian gunakan)
+const rootDomain = "foolvpn.me"; // Ganti dengan domain utama kalian
+const serviceName = "nautica"; // Ganti dengan nama workers kalian
+const apiKey = "734be7bf842d050e7cb8e762dca89c5c0ade9"; // Ganti dengan Global API key kalian (https://dash.cloudflare.com/profile/api-tokens)
+const apiEmail = "xpandhita@gmail.com"; // Ganti dengan email yang kalian gunakan
+const accountID = "817eee3f6b75e87cf1aba63519b45c9e"; // Ganti dengan Account ID kalian (https://dash.cloudflare.com -> Klik domain yang kalian gunakan)
+const zoneID = "817eee3f6b75e87cf1aba63519b45c9e"; // Ganti dengan Zone ID kalian (https://dash.cloudflare.com -> Klik domain yang kalian gunakan)
 let isApiReady = false;
 let proxyIP = "";
 let cachedProxyList = [];
 
 // Constant
+const APP_DOMAIN = `${serviceName}.${rootDomain}`;
+const DOH_SERVER = "https://doh.dns.sb/dns-query";
 const PROXY_HEALTH_CHECK_API = "https://p01--boiling-frame--kw6dd7bjv2nr.code.run/check";
-const PROXY_PER_PAGE = 25;
+const PROXY_PER_PAGE = 24;
 const WS_READY_STATE_OPEN = 1;
 const WS_READY_STATE_CLOSING = 2;
 const CORS_HEADER_OPTIONS = {
@@ -93,7 +95,7 @@ function getAllConfig(request, hostName, proxyList, page = 0) {
 
     // Build HTML
     const document = new Document(request);
-    document.setTitle("Welcome to <span class='text-blue-500 font-semibold'>NDESO-WEB-ID</span>");
+    document.setTitle("Welcome to <span class='text-blue-500 font-semibold'>ndeso.web.id</span>");
     document.addInfo(`Total: ${proxyList.length}`);
     document.addInfo(`Page: ${page}/${Math.floor(proxyList.length / PROXY_PER_PAGE)}`);
 
@@ -104,11 +106,11 @@ function getAllConfig(request, hostName, proxyList, page = 0) {
       const { proxyIP, proxyPort, country, org } = proxy;
 
       uri.searchParams.set("path", `/${proxyIP}-${proxyPort}`);
-      uri.hash = `${country} ${org}`;
 
       const proxies = [];
       for (const port of ports) {
         uri.port = port.toString();
+        uri.hash = `${i + 1} ${getFlagEmoji(country)} ${org} WS ${port == 443 ? "TLS" : "NTLS"} [${serviceName}]`;
         for (const protocol of protocols) {
           // Special exceptions
           if (protocol === "ss") {
@@ -163,7 +165,7 @@ export default {
 
         if (proxyMatch) {
           proxyIP = proxyMatch[1];
-          return await websockerHandler(request);
+          return await websocketHandler(request);
         }
       }
 
@@ -248,7 +250,7 @@ export default {
   },
 };
 
-async function websockerHandler(request) {
+async function websocketHandler(request) {
   const webSocketPair = new WebSocketPair();
   const [client, webSocket] = Object.values(webSocketPair);
 
@@ -412,7 +414,7 @@ async function handleTCPOutBound(
 }
 
 async function handleUDPOutbound(webSocket, responseHeader, log) {
-  let isVlessHeaderSent = false;
+  let isHeaderSent = false;
   const transformStream = new TransformStream({
     start(controller) {},
     transform(chunk, controller) {
@@ -430,7 +432,7 @@ async function handleUDPOutbound(webSocket, responseHeader, log) {
     .pipeTo(
       new WritableStream({
         async write(chunk) {
-          const resp = await fetch("https://1.1.1.1/dns-query", {
+          const resp = await fetch(DOH_SERVER, {
             method: "POST",
             headers: {
               "content-type": "application/dns-message",
@@ -442,11 +444,11 @@ async function handleUDPOutbound(webSocket, responseHeader, log) {
           const udpSizeBuffer = new Uint8Array([(udpSize >> 8) & 0xff, udpSize & 0xff]);
           if (webSocket.readyState === WS_READY_STATE_OPEN) {
             log(`doh success and dns message length is ${udpSize}`);
-            if (isVlessHeaderSent) {
+            if (isHeaderSent) {
               webSocket.send(await new Blob([udpSizeBuffer, dnsQueryResult]).arrayBuffer());
             } else {
               webSocket.send(await new Blob([responseHeader, udpSizeBuffer, dnsQueryResult]).arrayBuffer());
-              isVlessHeaderSent = true;
+              isHeaderSent = true;
             }
           }
         },
@@ -789,7 +791,7 @@ function arrayBufferToHex(buffer) {
 
 async function generateHashFromText(text) {
   const msgUint8 = new TextEncoder().encode(text); // encode as (utf-8) Uint8Array
-  const hashBuffer = await crypto.v2raytle.digest("MD5", msgUint8); // hash the message
+  const hashBuffer = await crypto.subtle.digest("MD5", msgUint8); // hash the message
   const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join(""); // convert bytes to hex string
 
@@ -843,6 +845,13 @@ class CloudflareApi {
 
     if (!domain.endsWith(rootDomain)) return 400;
     if (registeredDomains.includes(domain)) return 409;
+
+    try {
+      const domainTest = await fetch(`https://${domain.replaceAll("." + APP_DOMAIN, "")}`);
+      if (domainTest.status == 530) return 530;
+    } catch (e) {
+      return 400;
+    }
 
     const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountID}/workers/domains`;
     const res = await fetch(url, {
@@ -953,6 +962,59 @@ let baseHTML = `
       <div class="fixed z-20 top-0 w-full h-full bg-white dark:bg-neutral-800">
         <p id="container-window-info" class="text-center w-full h-full top-1/4 absolute dark:text-white"></p>
       </div>
+      <!-- Output Format -->
+      <div id="output-window" class="fixed z-20 top-0 right-0 w-full h-full flex justify-center items-center hidden">
+        <div class="w-[75%] h-[30%] flex flex-col gap-1 p-1 text-center rounded-md">
+          <div class="basis-1/6 w-full h-full rounded-md">
+            <div class="flex w-full h-full gap-1 justify-between">
+              <button
+                onclick="copyToClipboardAsTarget('clash')"
+                class="basis-1/2 p-2 rounded-full bg-amber-400 flex justify-center items-center"
+              >
+                Clash
+              </button>
+              <button
+                onclick="copyToClipboardAsTarget('sfa')"
+                class="basis-1/2 p-2 rounded-full bg-amber-400 flex justify-center items-center"
+              >
+                SFA
+              </button>
+              <button
+                onclick="copyToClipboardAsTarget('bfr')"
+                class="basis-1/2 p-2 rounded-full bg-amber-400 flex justify-center items-center"
+              >
+                BFR
+              </button>
+            </div>
+          </div>
+          <div class="basis-1/6 w-full h-full rounded-md">
+            <div class="flex w-full h-full gap-1 justify-between">
+              <button
+                onclick="copyToClipboardAsTarget('v2ray')"
+                class="basis-1/2 p-2 rounded-full bg-amber-400 flex justify-center items-center"
+              >
+                V2Ray/Xray
+              </button>
+              <button
+                onclick="copyToClipboardAsRaw()"
+                class="basis-1/2 p-2 rounded-full bg-amber-400 flex justify-center items-center"
+              >
+                Raw
+              </button>
+            </div>
+          </div>
+          <div class="basis-1/6 w-full h-full rounded-md">
+            <div class="flex w-full h-full gap-1 justify-center">
+              <button
+                onclick="toggleOutputWindow()"
+                class="basis-1/2 border-2 border-indigo-400 hover:bg-indigo-400 dark:text-white p-2 rounded-full flex justify-center items-center"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       <!-- Wildcards -->
       <div id="wildcards-window" class="fixed hidden z-20 top-0 right-0 w-full h-full flex justify-center items-center">
         <div class="w-[75%] h-[30%] flex flex-col gap-1 p-1 text-center rounded-md">
@@ -1028,11 +1090,18 @@ let baseHTML = `
     <script>
       // Shared
       const rootDomain = "${serviceName}.${rootDomain}";
+      const notification = document.getElementById("notification-badge");
       const windowContainer = document.getElementById("container-window");
       const windowInfoContainer = document.getElementById("container-window-info");
+      const converterUrl =
+        "https://script.google.com/macros/s/AKfycbwwVeHNUlnP92syOP82p1dOk_-xwBgRIxkTjLhxxZ5UXicrGOEVNc5JaSOu0Bgsx_gG/exec";
+
 
       // Switches
       let isDomainListFetched = false;
+
+      // Local variable
+      let rawConfig = "";
 
       function getDomainList() {
         if (isDomainListFetched) return;
@@ -1083,15 +1152,19 @@ let baseHTML = `
             if (res.status == 409) {
               windowInfoContainer.innerText = "Domain exists!";
             } else {
-              windowInfoContainer.innerText = "Error " + res.statusText;
+              windowInfoContainer.innerText = "Error " + res.status;
             }
           }
         });
       }
 
       function copyToClipboard(text) {
-        const notification = document.getElementById("notification-badge");
-        navigator.clipboard.writeText(text);
+        toggleOutputWindow();
+        rawConfig = text;
+      }
+
+      function copyToClipboardAsRaw() {
+        navigator.clipboard.writeText(rawConfig);
 
         notification.classList.remove("opacity-0");
         setTimeout(() => {
@@ -1099,11 +1172,43 @@ let baseHTML = `
         }, 2000);
       }
 
+      async function copyToClipboardAsTarget(target) {
+        windowInfoContainer.innerText = "Generating config...";
+        const url = converterUrl + "?target=" + target + "&url=" + encodeURIComponent(rawConfig);;
+        const res = await fetch(url, {
+          redirect: "follow",
+        });
+
+        if (res.status == 200) {
+          windowInfoContainer.innerText = "Done!";
+          navigator.clipboard.writeText(await res.text());
+
+          notification.classList.remove("opacity-0");
+          setTimeout(() => {
+            notification.classList.add("opacity-0");
+          }, 2000);
+        } else {
+          windowInfoContainer.innerText = "Error " + res.statusText;
+        }
+      }
+
       function navigateTo(link) {
         window.location.href = link + window.location.search;
       }
 
+      function toggleOutputWindow() {
+        windowInfoContainer.innerText = "Select output:";
+        toggleWindow();
+        const rootElement = document.getElementById("output-window");
+        if (rootElement.classList.contains("hidden")) {
+          rootElement.classList.remove("hidden");
+        } else {
+          rootElement.classList.add("hidden");
+        }
+      }
+
       function toggleWildcardsWindow() {
+        windowInfoContainer.innerText = "Domain list";
         toggleWindow();
         getDomainList();
         const rootElement = document.getElementById("wildcards-window");
