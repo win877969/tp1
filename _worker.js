@@ -93,7 +93,7 @@ function getAllConfig(request, hostName, proxyList, page = 0) {
 
     // Build HTML
     const document = new Document(request);
-    document.setTitle("Welcome to <span class='text-blue-500 font-semibold'>Nautica</span>");
+    document.setTitle("Welcome to <span class='text-blue-500 font-semibold'>NDESO-WEB-ID</span>");
     document.addInfo(`Total: ${proxyList.length}`);
     document.addInfo(`Page: ${page}/${Math.floor(proxyList.length / PROXY_PER_PAGE)}`);
 
@@ -235,7 +235,7 @@ export default {
         }
       }
 
-      const targetReverseProxy = env.REVERSE_PROXY_TARGET || "ndeso.web.id";
+      const targetReverseProxy = env.REVERSE_PROXY_TARGET || "example.com";
       return await reverseProxy(request, targetReverseProxy);
     } catch (err) {
       return new Response(`An error occurred: ${err.toString()}`, {
@@ -867,8 +867,7 @@ class CloudflareApi {
  * Cloudflare worker gak support DOM API, tetapi mereka menggunakan HTML Rewriter.
  * Tapi, karena kelihatannta repot kalo pake HTML Rewriter. Kita pake cara konfensional saja...
  */
-let baseHTML = `
-<!DOCTYPE html>
+let baseHTML = `<!DOCTYPE html>
 <html lang="en" id="html" class="scroll-auto scrollbar-hide">
   <head>
     <meta charset="UTF-8" />
@@ -936,7 +935,23 @@ let baseHTML = `
         <h1 class="text-xl text-center mb-6 text-neutral-800 dark:text-white">PLACEHOLDER_JUDUL</h1>
       </div>
       <div class="flex flex-col gap-6 items-center">
-        PLACEHOLDER_PROXY_GROUP
+        <!-- Table for Proxy List -->
+        <div class="overflow-x-auto w-full max-w-screen-xl">
+          <table class="min-w-full bg-white dark:bg-neutral-800 text-neutral-800 dark:text-white border-collapse">
+            <thead>
+              <tr>
+                <th class="py-3 px-6 text-left border-b border-neutral-800 dark:border-white">IP:PORT</th>
+                <th class="py-3 px-6 text-left border-b border-neutral-800 dark:border-white">Country</th>
+                <th class="py-3 px-6 text-left border-b border-neutral-800 dark:border-white">ISP</th>
+                <th class="py-3 px-6 text-left border-b border-neutral-800 dark:border-white">Status</th>
+                <th class="py-3 px-6 text-left border-b border-neutral-800 dark:border-white">Latency</th>
+              </tr>
+            </thead>
+            <tbody id="proxy-list-body">
+              <!-- Dynamic Proxy Data will be inserted here -->
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Pagination -->
@@ -1024,6 +1039,7 @@ let baseHTML = `
         </button>
       </div>
     </footer>
+  
 
     <script>
       // Shared
