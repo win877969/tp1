@@ -1,8 +1,8 @@
 import { connect } from "cloudflare:sockets";
 
 // Variables
-const rootDomain = "foolvpn.me"; // Ganti dengan domain utama kalian
-const serviceName = "nautica"; // Ganti dengan nama workers kalian
+const rootDomain = "ndeso.web.id"; // Ganti dengan domain utama kalian
+const serviceName = "ndeso.web.id"; // Ganti dengan nama workers kalian
 const apiKey = ""; // Ganti dengan Global API key kalian (https://dash.cloudflare.com/profile/api-tokens)
 const apiEmail = ""; // Ganti dengan email yang kalian gunakan
 const accountID = ""; // Ganti dengan Account ID kalian (https://dash.cloudflare.com -> Klik domain yang kalian gunakan)
@@ -13,7 +13,7 @@ let cachedProxyList = [];
 
 // Constant
 const PROXY_HEALTH_CHECK_API = "https://p01--boiling-frame--kw6dd7bjv2nr.code.run/check";
-const PROXY_PER_PAGE = 24;
+const PROXY_PER_PAGE = 25;
 const WS_READY_STATE_OPEN = 1;
 const WS_READY_STATE_CLOSING = 2;
 const CORS_HEADER_OPTIONS = {
@@ -235,7 +235,7 @@ export default {
         }
       }
 
-      const targetReverseProxy = env.REVERSE_PROXY_TARGET || "example.com";
+      const targetReverseProxy = env.REVERSE_PROXY_TARGET || "ndeso.web.id";
       return await reverseProxy(request, targetReverseProxy);
     } catch (err) {
       return new Response(`An error occurred: ${err.toString()}`, {
