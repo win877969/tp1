@@ -86,3 +86,6 @@ custom_domain = true
 [[routes]]
 pattern = "api.midtrans.com.tp1.ndeso.web.id"
 custom_domain = true
+
+[vars]
+PROXY_BANK_URL = "https://bmkg.xyz/bot/proxy_list.txt"
