@@ -9,6 +9,45 @@ enabled = true
 [observability.logs]
 enabled = true
 [[routes]]
+pattern = "tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "ava.game.naver.com.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "graph.instagram.com.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "quiz.int.vidio.com.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "live.iflix.com.vcip.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "support.zoom.us.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "blog.webex.com.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "investors.spotify.com.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "cache.netflix.com.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "zaintest.vuclip.com.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "io.ruangguru.com.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "business.blibli.com.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
+pattern = "api.midtrans.com.tp1.bmkg.xyz"
+custom_domain = true
+[[routes]]
 pattern = "tp1.ndeso.web.id"
 custom_domain = true
 [[routes]]
