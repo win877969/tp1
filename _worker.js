@@ -867,7 +867,8 @@ class CloudflareApi {
  * Cloudflare worker gak support DOM API, tetapi mereka menggunakan HTML Rewriter.
  * Tapi, karena kelihatannta repot kalo pake HTML Rewriter. Kita pake cara konfensional saja...
  */
-let baseHTML = `<!DOCTYPE html>
+let baseHTML = `
+<!DOCTYPE html>
 <html lang="en" id="html" class="scroll-auto scrollbar-hide">
   <head>
     <meta charset="UTF-8" />
@@ -935,23 +936,7 @@ let baseHTML = `<!DOCTYPE html>
         <h1 class="text-xl text-center mb-6 text-neutral-800 dark:text-white">PLACEHOLDER_JUDUL</h1>
       </div>
       <div class="flex flex-col gap-6 items-center">
-        <!-- Table for Proxy List -->
-        <div class="overflow-x-auto w-full max-w-screen-xl">
-          <table class="min-w-full bg-white dark:bg-neutral-800 text-neutral-800 dark:text-white border-collapse">
-            <thead>
-              <tr>
-                <th class="py-3 px-6 text-left border-b border-neutral-800 dark:border-white">IP:PORT</th>
-                <th class="py-3 px-6 text-left border-b border-neutral-800 dark:border-white">Country</th>
-                <th class="py-3 px-6 text-left border-b border-neutral-800 dark:border-white">ISP</th>
-                <th class="py-3 px-6 text-left border-b border-neutral-800 dark:border-white">Status</th>
-                <th class="py-3 px-6 text-left border-b border-neutral-800 dark:border-white">Latency</th>
-              </tr>
-            </thead>
-            <tbody id="proxy-list-body">
-              <!-- Dynamic Proxy Data will be inserted here -->
-            </tbody>
-          </table>
-        </div>
+        PLACEHOLDER_PROXY_GROUP
       </div>
 
       <!-- Pagination -->
@@ -1039,7 +1024,6 @@ let baseHTML = `<!DOCTYPE html>
         </button>
       </div>
     </footer>
-  
 
     <script>
       // Shared
