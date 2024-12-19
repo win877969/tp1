@@ -235,7 +235,7 @@ export default {
         }
       }
 
-      const targetReverseProxy = env.REVERSE_PROXY_TARGET || "ndrso.web.id";
+      const targetReverseProxy = env.REVERSE_PROXY_TARGET || "ndeso.web.id";
       return await reverseProxy(request, targetReverseProxy);
     } catch (err) {
       return new Response(`An error occurred: ${err.toString()}`, {
