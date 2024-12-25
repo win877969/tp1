@@ -13,9 +13,15 @@ let cachedProxyList = [];
 
 // Constant
 const APP_DOMAIN = `${serviceName}.${rootDomain}`;
-const DOH_SERVER = "https://doh.dns.sb/dns-query";
-const PROXY_HEALTH_CHECK_API = "https://p01--boiling-frame--kw6dd7bjv2nr.code.run/check";
-const PROXY_PER_PAGE = 50;
+const PORTS = [443, 80];
+const PROTOCOLS = ["trojan", "vless", "ss"];
+const KV_PROXY_URL = "https://raw.githubusercontent.com/dickymuliafiqri/Nautica/refs/heads/main/kvProxyList.json";
+const PROXY_BANK_URL = "https://raw.githubusercontent.com/dickymuliafiqri/Nautica/refs/heads/main/proxyList.txt";
+const DOH_SERVER = "https://dns.quad9.net/dns-query";
+const PROXY_HEALTH_CHECK_API = "https://id1.foolvpn.me/api/v1/check";
+const CONVERTER_URL =
+  "https://script.google.com/macros/s/AKfycbwwVeHNUlnP92syOP82p1dOk_-xwBgRIxkTjLhxxZ5UXicrGOEVNc5JaSOu0Bgsx_gG/exec";
+const PROXY_PER_PAGE = 24;
 const WS_READY_STATE_OPEN = 1;
 const WS_READY_STATE_CLOSING = 2;
 const CORS_HEADER_OPTIONS = {
@@ -24,7 +30,20 @@ const CORS_HEADER_OPTIONS = {
   "Access-Control-Max-Age": "86400",
 };
 
-async function getProxyList(proxyBankUrl) {
+async function getKVProxyList(kvProxyUrl = KV_PROXY_URL) {
+  if (!kvProxyUrl) {
+    throw new Error("No KV Proxy URL Provided!");
+  }
+
+  const kvProxy = await fetch(kvProxyUrl);
+  if (kvProxy.status == 200) {
+    return await kvProxy.json();
+  } else {
+    return {};
+  }
+}
+
+async function getProxyList(proxyBankUrl = PROXY_BANK_URL) {
   /**
    * Format:
    *
@@ -57,12 +76,13 @@ async function getProxyList(proxyBankUrl) {
   return cachedProxyList;
 }
 
-async function reverseProxy(request, target) {
+async function reverseProxy(request, target, targetPath) {
   const targetUrl = new URL(request.url);
   const targetChunk = target.split(":");
 
   targetUrl.hostname = targetChunk[0];
-  targetUrl.port = targetChunk.toString() || "443";
+  targetUrl.port = targetChunk[1]?.toString() || "443";
+  targetUrl.pathname = targetPath || targetUrl.pathname;
 
   const modifiedRequest = new Request(targetUrl, request);
 
@@ -84,8 +104,6 @@ function getAllConfig(request, hostName, proxyList, page = 0) {
 
   try {
     const uuid = crypto.randomUUID();
-    const ports = [443, 80];
-    const protocols = ["trojan", "vless", "ss"];
 
     // Build URI
     const uri = new URL(`trojan://${hostName}`);
@@ -95,7 +113,7 @@ function getAllConfig(request, hostName, proxyList, page = 0) {
 
     // Build HTML
     const document = new Document(request);
-    document.setTitle("Welcome to <span class='text-blue-500 font-semibold'>ndeso.web.id</span>");
+    document.setTitle("Welcome to <span class='text-blue-500 font-semibold'>Nautica</span>");
     document.addInfo(`Total: ${proxyList.length}`);
     document.addInfo(`Page: ${page}/${Math.floor(proxyList.length / PROXY_PER_PAGE)}`);
 
@@ -108,10 +126,10 @@ function getAllConfig(request, hostName, proxyList, page = 0) {
       uri.searchParams.set("path", `/${proxyIP}-${proxyPort}`);
 
       const proxies = [];
-      for (const port of ports) {
+      for (const port of PORTS) {
         uri.port = port.toString();
         uri.hash = `${i + 1} ${getFlagEmoji(country)} ${org} WS ${port == 443 ? "TLS" : "NTLS"} [${serviceName}]`;
-        for (const protocol of protocols) {
+        for (const protocol of PROTOCOLS) {
           // Special exceptions
           if (protocol === "ss") {
             uri.username = btoa(`none:${uuid}`);
@@ -139,8 +157,8 @@ function getAllConfig(request, hostName, proxyList, page = 0) {
     }
 
     // Build pagination
-    document.addPageButton("Prev", `/v2ray/${page > 0 ? page - 1 : 0}`, page > 0 ? false : true);
-    document.addPageButton("Next", `/v2ray/${page + 1}`, page < Math.floor(proxyList.length / 10) ? false : true);
+    document.addPageButton("Prev", `/vpn/${page > 0 ? page - 1 : 0}`, page > 0 ? false : true);
+    document.addPageButton("Next", `/vpn/${page + 1}`, page < Math.floor(proxyList.length / 10) ? false : true);
 
     return document.build();
   } catch (error) {
@@ -163,19 +181,33 @@ export default {
       if (upgradeHeader === "websocket") {
         const proxyMatch = url.pathname.match(/^\/(.+[:=-]\d+)$/);
 
-        if (proxyMatch) {
+        if (url.pathname.length == 3) {
+          // Contoh: /ID, /SG, dll
+          const proxyKey = url.pathname.replace("/", "").toUpperCase();
+          let kvProxy = await env.nautica.get("kvProxy");
+          if (kvProxy) {
+            kvProxy = JSON.parse(kvProxy);
+          } else {
+            kvProxy = await getKVProxyList();
+            env.nautica.put(JSON.stringify(kvProxy));
+          }
+
+          proxyIP = kvProxy[proxyKey][Math.floor(Math.random() * kvProxy[proxyKey].length)];
+
+          return await websocketHandler(request);
+        } else if (proxyMatch) {
           proxyIP = proxyMatch[1];
           return await websocketHandler(request);
         }
       }
 
-      if (url.pathname.startsWith("/v2ray")) {
-        const page = url.pathname.match(/^\/v2ray\/(\d+)$/);
+      if (url.pathname.startsWith("/vpn")) {
+        const page = url.pathname.match(/^\/vpn\/(\d+)$/);
         const pageIndex = parseInt(page ? page[1] : "0");
         const hostname = request.headers.get("Host");
 
         // Queries
-        const countrySelect = url.searchParams.get("cc")?.split(",");
+        const countrySelect = url.searchParams.get("country")?.split(",");
         const proxyBankUrl = url.searchParams.get("proxy-list") || env.PROXY_BANK_URL;
         let proxyList = (await getProxyList(proxyBankUrl)).filter((proxy) => {
           // Filter proxies by Country
@@ -193,8 +225,7 @@ export default {
         });
       } else if (url.pathname.startsWith("/check")) {
         const target = url.searchParams.get("target").split(":");
-        const tls = url.searchParams.get("tls");
-        const result = await checkProxyHealth(target[0], target[1] || "443", tls);
+        const result = await checkProxyHealth(target[0], target[1] || "443");
 
         return new Response(JSON.stringify(result), {
           status: 200,
@@ -206,13 +237,13 @@ export default {
       } else if (url.pathname.startsWith("/api/v1")) {
         const apiPath = url.pathname.replace("/api/v1", "");
 
-        if (!isApiReady) {
-          return new Response("Api not ready", {
-            status: 500,
-          });
-        }
-
         if (apiPath.startsWith("/domains")) {
+          if (!isApiReady) {
+            return new Response("Api not ready", {
+              status: 500,
+            });
+          }
+
           const wildcardApiPath = apiPath.replace("/domains", "");
           const cloudflareApi = new CloudflareApi();
 
@@ -234,6 +265,111 @@ export default {
               },
             });
           }
+        } else if (apiPath.startsWith("/vpn")) {
+          const filterCC = url.searchParams.get("country")?.split(",") || [];
+          const filterPort = url.searchParams.get("port")?.split(",") || PORTS;
+          const filterVPN = url.searchParams.get("vpn")?.split(",") || PROTOCOLS;
+          const filterLimit = parseInt(url.searchParams.get("limit")) || 10;
+          const filterFormat = url.searchParams.get("format") || "raw";
+          const fillerDomain = url.searchParams.get("domain") || APP_DOMAIN;
+
+          const proxyBankUrl = url.searchParams.get("proxy-list") || env.PROXY_BANK_URL;
+          const proxyList = await getProxyList(proxyBankUrl)
+            .then((proxies) => {
+              // Filter CC
+              if (filterCC.length) {
+                return proxies.filter((proxy) => filterCC.includes(proxy.country));
+              }
+              return proxies;
+            })
+            .then((proxies) => {
+              // shuffle result
+              shuffleArray(proxies);
+              return proxies;
+            });
+
+          const uuid = crypto.randomUUID();
+          const result = [];
+          for (const proxy of proxyList) {
+            const uri = new URL(`trojan://${fillerDomain}`);
+            uri.searchParams.set("encryption", "none");
+            uri.searchParams.set("type", "ws");
+            uri.searchParams.set("host", APP_DOMAIN);
+
+            for (const port of filterPort) {
+              for (const protocol of filterVPN) {
+                if (result.length >= filterLimit) break;
+
+                uri.protocol = protocol;
+                uri.port = port.toString();
+                if (protocol == "ss") {
+                  uri.username = btoa(`none:${uuid}`);
+                } else {
+                  uri.username = uuid;
+                }
+
+                uri.searchParams.set("security", port == 443 ? "tls" : "none");
+                uri.searchParams.set("sni", port == 80 && protocol == "vless" ? "" : APP_DOMAIN);
+                uri.searchParams.set("path", `/${proxy.proxyIP}-${proxy.proxyPort}`);
+
+                uri.hash = `${result.length + 1} ${getFlagEmoji(proxy.country)} ${proxy.org} WS ${
+                  port == 443 ? "TLS" : "NTLS"
+                } [${serviceName}]`;
+                result.push(uri.toString());
+              }
+            }
+          }
+
+          let finalResult = "";
+          switch (filterFormat) {
+            case "raw":
+              finalResult = result.join("\n");
+              break;
+            case "clash":
+            case "sfa":
+            case "bfr":
+            case "v2ray":
+              const encodedResult = [];
+              for (const proxy of result) {
+                encodedResult.push(encodeURIComponent(proxy));
+              }
+
+              const res = await fetch(`${CONVERTER_URL}?target=${filterFormat}&url=${encodedResult.join(",")}`);
+              if (res.status == 200) {
+                finalResult = await res.text();
+              } else {
+                return new Response(res.statusText, {
+                  status: res.status,
+                  headers: {
+                    ...CORS_HEADER_OPTIONS,
+                  },
+                });
+              }
+              break;
+          }
+
+          return new Response(finalResult, {
+            status: 200,
+            headers: {
+              ...CORS_HEADER_OPTIONS,
+            },
+          });
+        } else if (apiPath.startsWith("/myip")) {
+          return new Response(
+            JSON.stringify({
+              ip:
+                request.headers.get("cf-connecting-ipv6") ||
+                request.headers.get("cf-connecting-ip") ||
+                request.headers.get("x-real-ip"),
+              colo: request.headers.get("cf-ray")?.split("-")[1],
+              ...request.cf,
+            }),
+            {
+              headers: {
+                ...CORS_HEADER_OPTIONS,
+              },
+            }
+          );
         }
       }
 
@@ -763,10 +899,8 @@ function safeCloseWebSocket(socket) {
   }
 }
 
-async function checkProxyHealth(proxyIP, proxyPort, tls) {
-  const req = await fetch(
-    `${PROXY_HEALTH_CHECK_API}?ip=${proxyIP}&port=${proxyPort}&host=speed.cloudflare.com&tls=${tls}`
-  );
+async function checkProxyHealth(proxyIP, proxyPort) {
+  const req = await fetch(`${PROXY_HEALTH_CHECK_API}?ip=${proxyIP}:${proxyPort}`);
   return await req.json();
 }
 
@@ -787,6 +921,20 @@ function base64ToArrayBuffer(base64Str) {
 
 function arrayBufferToHex(buffer) {
   return [...new Uint8Array(buffer)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+function shuffleArray(array) {
+  let currentIndex = array.length;
+
+  // While there remain elements to shuffle...
+  while (currentIndex != 0) {
+    // Pick a remaining element...
+    let randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
 }
 
 async function generateHashFromText(text) {
@@ -878,7 +1026,7 @@ class CloudflareApi {
  */
 let baseHTML = `
 <!DOCTYPE html>
-<html lang="en" id="html" class="scroll-auto scrollbar-hide">
+<html lang="en" id="html" class="scroll-auto scrollbar-hide dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -937,19 +1085,30 @@ let baseHTML = `
       </div>
     </div>
     <!-- Main -->
-    <div class="container mx-auto py-10 mt-28">
+    <div id="container-header">
+      <div id="container-info" class="bg-amber-400 border-2 border-neutral-800 text-right px-5">
+        <div class="flex justify-end gap-3 text-sm">
+          <p id="container-info-ip">IP: 127.0.0.1</p>
+          <p id="container-info-country">Country: Indonesia</p>
+          <p id="container-info-isp">ISP: Localhost</p>
+        </div>
+      </div>
+    </div>
+    <div class="container">
       <div
         id="container-title"
-        class="bg-white dark:bg-neutral-800 border-b-2 border-neutral-800 dark:border-white fixed z-10 mx-auto pt-6 px-12 top-0 left-0 w-screen"
+        class="sticky bg-white dark:bg-neutral-800 border-b-2 border-neutral-800 dark:border-white z-10 py-6 w-screen"
       >
-        <h1 class="text-xl text-center mb-6 text-neutral-800 dark:text-white">PLACEHOLDER_JUDUL</h1>
+        <h1 class="text-xl text-center text-neutral-800 dark:text-white">
+          PLACEHOLDER_JUDUL
+        </h1>
       </div>
-      <div class="flex flex-col gap-6 items-center">
+      <div class="flex gap-6 pt-10 w-screen justify-center">
         PLACEHOLDER_PROXY_GROUP
       </div>
 
       <!-- Pagination -->
-      <nav id="container-pagination" class="mt-8 sticky bottom-0 right-0 left-0 transition -translate-y-6 z-20">
+      <nav id="container-pagination" class="w-screen mt-8 sticky bottom-0 right-0 left-0 transition -translate-y-6 z-20">
         <ul class="flex justify-center space-x-4">
           PLACEHOLDER_PAGE_BUTTON
         </ul>
@@ -1250,34 +1409,47 @@ let baseHTML = `
 
           let isActive = false;
           new Promise(async (resolve) => {
-            for (const tls of [true, false]) {
-              const res = await fetch("https://${serviceName}.${rootDomain}/check?target=" + target + "&tls=" + tls)
-                .then(async (res) => {
-                  if (isActive) return;
-                  if (res.status == 200) {
-                    pingElement.classList.remove("dark:text-white");
-                    const jsonResp = await res.json();
-                    if (jsonResp.proxyip) {
-                      isActive = true;
-                      pingElement.textContent = "Active";
-                      pingElement.classList.add("text-green-600");
-                    } else {
-                      pingElement.textContent = "Inactive";
-                      pingElement.classList.add("text-red-600");
-                    }
+            const res = await fetch("https://${serviceName}.${rootDomain}/check?target=" + target)
+              .then(async (res) => {
+                if (isActive) return;
+                if (res.status == 200) {
+                  pingElement.classList.remove("dark:text-white");
+                  const jsonResp = await res.json();
+                  if (jsonResp.proxyip === true) {
+                    isActive = true;
+                    pingElement.textContent = "Active " + jsonResp.delay + " ms";
+                    pingElement.classList.add("text-green-600");
                   } else {
-                    pingElement.textContent = "Check Failed!";
+                    pingElement.textContent = "Inactive";
+                    pingElement.classList.add("text-red-600");
                   }
-                })
-                .finally(() => {
-                  resolve(0);
-                });
-            }
+                } else {
+                  pingElement.textContent = "Check Failed!";
+                }
+              })
+              .finally(() => {
+                resolve(0);
+              });
           });
         }
       }
 
+      function checkGeoip() {
+        const containerIP = document.getElementById("container-info-ip");
+        const containerCountry = document.getElementById("container-info-country");
+        const containerISP = document.getElementById("container-info-isp");
+        const res = fetch("https://" + rootDomain + "/api/v1/myip").then(async (res) => {
+          if (res.status == 200) {
+            const respJson = await res.json();
+            containerIP.innerText = "IP: " + respJson.ip;
+            containerCountry.innerText = "Country: " + respJson.country;
+            containerISP.innerText = "ISP: " + respJson.asOrganization;
+          }
+        });
+      }
+
       window.onload = () => {
+        checkGeoip();
         checkProxy();
 
         const observer = lozad(".lozad", {
@@ -1336,7 +1508,7 @@ class Document {
 
       // Assign proxies
       proxyGroupElement += `<div class="lozad scale-95 mb-2 bg-white dark:bg-neutral-800 transition-transform duration-200 rounded-lg p-4 w-60 border-2 border-neutral-800">`;
-      proxyGroupElement += `  <div id="countryFlag" class="absolute -translate-y-10 -translate-x-2 border-2 border-neutral-800 rounded-md overflow-hidden scale-75"><img height="20" src="https://flagcdn.com/h40/${proxyData.country.toLowerCase()}.png" /></div>`;
+      proxyGroupElement += `  <div id="countryFlag" class="absolute -translate-y-9 -translate-x-2 border-2 border-neutral-800 rounded-full overflow-hidden"><img width="32" src="https://hatscripts.github.io/circle-flags/flags/${proxyData.country.toLowerCase()}.svg" /></div>`;
       proxyGroupElement += `  <div>`;
       proxyGroupElement += `    <div id="ping-${i}" class="animate-pulse text-xs font-semibold dark:text-white">Idle ${proxyData.proxyIP}:${proxyData.proxyPort}</div>`;
       proxyGroupElement += `  </div>`;
@@ -1379,9 +1551,9 @@ class Document {
 
     let flagElement = "";
     for (const flag of new Set(flagList)) {
-      flagElement += `<a href="/v2ray?cc=${flag}${
+      flagElement += `<a href="/vpn?country=${flag}${
         proxyBankUrl ? "&proxy-list=" + proxyBankUrl : ""
-      }" class="py-1" ><img width=20 src="https://flagcdn.com/h80/${flag.toLowerCase()}.png" /></a>`;
+      }" class="py-1" ><img width=20 src="https://hatscripts.github.io/circle-flags/flags/${flag.toLowerCase()}.svg" /></a>`;
     }
 
     this.html = this.html.replaceAll("PLACEHOLDER_BENDERA_NEGARA", flagElement);
